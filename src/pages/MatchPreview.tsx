@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { MatchPreviewResponse, RecentMatch } from '../types/api';
+import type { MatchPreviewResponse, RecentMatchRow } from '../types/api';
 import FormStrip from '../components/FormStrip';
 import MetricHelp, { METRIC_DEFINITIONS } from '../components/MetricHelp';
 import TeamLogo from '../components/TeamLogo';
@@ -42,11 +42,27 @@ export default function MatchPreview() {
   }
 
   if (error) {
+    const isServerError = error.includes('500') || error.includes('API error');
+    const isCorsError = error.includes('CORS') || error.includes('Network error');
+    
     return (
       <div className="text-center py-12">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Error</h3>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-lg mx-auto">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Match Preview</h3>
           <p className="text-red-600 mb-4">{error}</p>
+          
+          {(isServerError || isCorsError) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4 text-left">
+              <p className="text-sm text-yellow-800">
+                <strong>Backend Error (500):</strong> The match preview endpoint is failing. 
+                Check your backend logs for the error on <code className="bg-yellow-100 px-1 rounded">/api/matches/{matchId}/preview</code>
+              </p>
+              <p className="text-xs text-yellow-700 mt-2">
+                Common causes: missing data, database query errors, or schema mismatch.
+              </p>
+            </div>
+          )}
+          
           <Link
             to="/"
             className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
@@ -72,8 +88,18 @@ export default function MatchPreview() {
     );
   }
 
-  const { match, tags, scores, whyBullets, home, away } = preview;
+  const { match, tags, scores, whyBullets } = preview;
   
+  // Handle both backend formats: {home, away} or {homeSummary, awaySummary}
+  const homeSummary = (preview as any).homeSummary || (preview as any).home?.summary;
+  const awaySummary = (preview as any).awaySummary || (preview as any).away?.summary;
+  const homeRecentMatches = (preview as any).homeRecentMatches || (preview as any).home?.recentMatches || [];
+  const awayRecentMatches = (preview as any).awayRecentMatches || (preview as any).away?.recentMatches || [];
+  
+  // Get team names from match object
+  const homeTeamName = match.homeTeam?.name || 'Home Team';
+  const awayTeamName = match.awayTeam?.name || 'Away Team';
+
   // Convert UTC date to local time
   const localKickoff = new Date(match.utcDate).toLocaleString('en-US', {
     timeZone: 'America/New_York',
@@ -85,7 +111,7 @@ export default function MatchPreview() {
     hour12: true,
   });
 
-  const scoreDisplay = match.score 
+  const scoreDisplay = match.score && match.score.home !== null && match.score.away !== null
     ? `${match.score.home} - ${match.score.away}`
     : null;
 
@@ -100,18 +126,18 @@ export default function MatchPreview() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="text-center">
           <p className="text-sm text-gray-500 mb-4">{match.competition?.name}</p>
-          
+
           <div className="flex items-center justify-center gap-6 mb-4">
             <div className="flex flex-col items-center flex-1">
               <TeamLogo teamId={match.homeTeam.id} teamName={match.homeTeam.name} size="lg" className="mb-2" />
-              <Link 
+              <Link
                 to={`/team/${match.homeTeam.id}`}
                 className="text-lg font-bold hover:text-blue-600 transition-colors text-center"
               >
                 {match.homeTeam.name}
               </Link>
             </div>
-            
+
             <div className="text-center px-4">
               {scoreDisplay ? (
                 <div className="text-3xl font-bold">{scoreDisplay}</div>
@@ -119,10 +145,10 @@ export default function MatchPreview() {
                 <div className="text-2xl font-semibold text-gray-400">vs</div>
               )}
             </div>
-            
+
             <div className="flex flex-col items-center flex-1">
               <TeamLogo teamId={match.awayTeam.id} teamName={match.awayTeam.name} size="lg" className="mb-2" />
-              <Link 
+              <Link
                 to={`/team/${match.awayTeam.id}`}
                 className="text-lg font-bold hover:text-blue-600 transition-colors text-center"
               >
@@ -133,11 +159,10 @@ export default function MatchPreview() {
 
           <div className="flex items-center justify-center gap-4 text-sm">
             <span className="text-gray-600">{localKickoff}</span>
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              match.status === 'FINISHED' ? 'bg-green-100 text-green-800' :
-              match.status === 'LIVE' ? 'bg-red-100 text-red-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${match.status === 'FINISHED' ? 'bg-green-100 text-green-800' :
+                match.status === 'LIVE' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+              }`}>
               {match.status}
             </span>
           </div>
@@ -200,17 +225,17 @@ export default function MatchPreview() {
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Form Comparison</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-sm font-medium text-gray-900 mb-2">{home.teamName}</p>
-            {home.summary?.formString ? (
-              <FormStrip form={home.summary.formString.split('')} />
+            <p className="text-sm font-medium text-gray-900 mb-2">{homeTeamName}</p>
+            {homeSummary?.formString ? (
+              <FormStrip form={homeSummary.formString.split('')} />
             ) : (
               <p className="text-sm text-gray-400">No form data available</p>
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900 mb-2">{away.teamName}</p>
-            {away.summary?.formString ? (
-              <FormStrip form={away.summary.formString.split('')} />
+            <p className="text-sm font-medium text-gray-900 mb-2">{awayTeamName}</p>
+            {awaySummary?.formString ? (
+              <FormStrip form={awaySummary.formString.split('')} />
             ) : (
               <p className="text-sm text-gray-400">No form data available</p>
             )}
@@ -223,10 +248,10 @@ export default function MatchPreview() {
         {/* Home Recent Matches */}
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            {home.teamName} - Recent Matches
+            {homeTeamName} - Recent Matches
           </h3>
-          {home.recentMatches && home.recentMatches.length > 0 ? (
-            <RecentMatchesTable matches={home.recentMatches} />
+          {homeRecentMatches && homeRecentMatches.length > 0 ? (
+            <RecentMatchesTable matches={homeRecentMatches} />
           ) : (
             <p className="text-sm text-gray-400">No recent matches available</p>
           )}
@@ -235,10 +260,10 @@ export default function MatchPreview() {
         {/* Away Recent Matches */}
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            {away.teamName} - Recent Matches
+            {awayTeamName} - Recent Matches
           </h3>
-          {away.recentMatches && away.recentMatches.length > 0 ? (
-            <RecentMatchesTable matches={away.recentMatches} />
+          {awayRecentMatches && awayRecentMatches.length > 0 ? (
+            <RecentMatchesTable matches={awayRecentMatches} />
           ) : (
             <p className="text-sm text-gray-400">No recent matches available</p>
           )}
@@ -249,7 +274,7 @@ export default function MatchPreview() {
 }
 
 // Helper component for recent matches table
-function RecentMatchesTable({ matches }: { matches: RecentMatch[] }) {
+function RecentMatchesTable({ matches }: { matches: RecentMatchRow[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -268,11 +293,11 @@ function RecentMatchesTable({ matches }: { matches: RecentMatch[] }) {
               month: 'short',
               day: 'numeric',
             });
-            
-            const resultClass = 
+
+            const resultClass =
               match.result === 'W' ? 'bg-green-100 text-green-800' :
-              match.result === 'D' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-red-100 text-red-800';
+                match.result === 'D' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800';
 
             const homeAwayLabel = match.homeAway === 'HOME' ? 'H' : 'A';
 
@@ -281,9 +306,8 @@ function RecentMatchesTable({ matches }: { matches: RecentMatch[] }) {
                 <td className="py-2 pr-2 text-gray-600">{matchDate}</td>
                 <td className="py-2 pr-2 font-medium">{match.opponentName}</td>
                 <td className="py-2 pr-2">
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    match.homeAway === 'HOME' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded text-xs ${match.homeAway === 'HOME' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
                     {homeAwayLabel}
                   </span>
                 </td>

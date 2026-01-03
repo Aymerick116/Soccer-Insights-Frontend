@@ -1,17 +1,55 @@
 import { Link, useNavigate } from 'react-router-dom';
-import type { FixturesTableRow } from '../types/api';
 import { formatLocalTime, formatScore } from '../utils/dateHelpers';
 import TeamLogo from './TeamLogo';
 
+// Accept any shape - we'll normalize it
 interface FixturesTableProps {
-  rows: FixturesTableRow[];
+  rows: any[];
+}
+
+// Helper to extract team info (handles string or object)
+function getTeamInfo(team: any): { id: number | undefined; name: string } {
+  if (typeof team === 'string') {
+    return { id: undefined, name: team };
+  }
+  if (team && typeof team === 'object') {
+    return { id: team.id, name: team.name || 'Unknown' };
+  }
+  return { id: undefined, name: 'Unknown' };
 }
 
 export default function FixturesTable({ rows }: FixturesTableProps) {
   const navigate = useNavigate();
-  
+
+  if (!rows || !Array.isArray(rows)) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <p className="text-gray-500 text-center">No fixtures on this date.</p>
+      </div>
+    );
+  }
+
+  // Normalize rows - handle both flat and nested structures
+  const normalizedRows = rows.map((row) => {
+    // If row has a fixture property, it's nested
+    const data = row.fixture || row;
+    const tags = row.tags || [];
+    
+    return {
+      matchId: data.matchId,
+      utcDate: data.utcDate,
+      status: data.status,
+      score: data.score,
+      homeTeam: getTeamInfo(data.homeTeam),
+      awayTeam: getTeamInfo(data.awayTeam),
+      quickTag: tags.length > 0 ? tags[0] : (data.quickTag || null),
+    };
+  });
+
   // Filter out rows with invalid data
-  const validRows = rows.filter((row) => row.matchId && row.utcDate);
+  const validRows = normalizedRows.filter(
+    (row) => row.matchId && row.utcDate && row.homeTeam.name && row.awayTeam.name
+  );
 
   if (validRows.length === 0) {
     return (
@@ -62,22 +100,21 @@ export default function FixturesTable({ rows }: FixturesTableProps) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
-                        <TeamLogo teamId={row.teams.home.id} teamName={row.teams.home.name} size="sm" />
-                        <span className="text-sm font-medium text-gray-900">{row.teams.home.name}</span>
+                        {row.homeTeam.id && <TeamLogo teamId={row.homeTeam.id} teamName={row.homeTeam.name} size="sm" />}
+                        <span className="text-sm font-medium text-gray-900">{row.homeTeam.name}</span>
                       </div>
                       <span className="text-gray-400 text-sm">vs</span>
                       <div className="flex items-center gap-2">
-                        <TeamLogo teamId={row.teams.away.id} teamName={row.teams.away.name} size="sm" />
-                        <span className="text-sm font-medium text-gray-900">{row.teams.away.name}</span>
+                        {row.awayTeam.id && <TeamLogo teamId={row.awayTeam.id} teamName={row.awayTeam.name} size="sm" />}
+                        <span className="text-sm font-medium text-gray-900">{row.awayTeam.name}</span>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${
-                      row.status === 'FINISHED' ? 'bg-green-100 text-green-800' :
-                      row.status === 'LIVE' || row.status === 'IN_PLAY' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${row.status === 'FINISHED' ? 'bg-green-100 text-green-800' :
+                        row.status === 'LIVE' || row.status === 'IN_PLAY' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                      }`}>
                       {row.status}
                     </span>
                   </td>
@@ -108,23 +145,22 @@ export default function FixturesTable({ rows }: FixturesTableProps) {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-900">{localTime}</span>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${
-                  row.status === 'FINISHED' ? 'bg-green-100 text-green-800' :
-                  row.status === 'LIVE' || row.status === 'IN_PLAY' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${row.status === 'FINISHED' ? 'bg-green-100 text-green-800' :
+                    row.status === 'LIVE' || row.status === 'IN_PLAY' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                  }`}>
                   {row.status}
                 </span>
               </div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1">
-                  <TeamLogo teamId={row.teams.home.id} teamName={row.teams.home.name} size="sm" />
-                  <span className="text-sm font-semibold text-gray-900">{row.teams.home.name}</span>
+                  {row.homeTeam.id && <TeamLogo teamId={row.homeTeam.id} teamName={row.homeTeam.name} size="sm" />}
+                  <span className="text-sm font-semibold text-gray-900">{row.homeTeam.name}</span>
                 </div>
                 <span className="text-gray-400 text-sm">vs</span>
                 <div className="flex items-center gap-1">
-                  <TeamLogo teamId={row.teams.away.id} teamName={row.teams.away.name} size="sm" />
-                  <span className="text-sm font-semibold text-gray-900">{row.teams.away.name}</span>
+                  {row.awayTeam.id && <TeamLogo teamId={row.awayTeam.id} teamName={row.awayTeam.name} size="sm" />}
+                  <span className="text-sm font-semibold text-gray-900">{row.awayTeam.name}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">

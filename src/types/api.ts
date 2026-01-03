@@ -1,90 +1,57 @@
 /** API types matching backend Pydantic models */
 
-export interface Team {
-  id: number;
-  name: string;
-  short_name: string;
-  logo_url?: string;
-  country?: string;
-}
-
+// ===== Base Types =====
 export interface TeamRef {
   id: number;
   name: string;
-  short_name?: string;
+  shortName?: string;
+  tla?: string;
+  crestUrl?: string;
 }
 
 export interface Score {
-  home?: number;
-  away?: number;
+  home: number | null;
+  away: number | null;
 }
 
 export interface Competition {
-  id: number;
+  code: string;
   name: string;
-  country?: string;
+  areaName?: string;
 }
 
 export interface Fixture {
-  id?: number;
   matchId: number;
+  utcDate: string; // ISO datetime string in UTC
+  status: string; // "SCHEDULED", "LIVE", "FINISHED", etc.
+  matchday?: number;
   competition: Competition;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
-  utcDate: string; // ISO datetime string in UTC
-  status: string; // "SCHEDULED", "LIVE", "FINISHED", etc.
-  score?: Score;
-  venue?: string;
+  score: Score;
 }
 
+// ===== Team Summary =====
 export interface TeamSummary {
-  team: TeamRef;
-  formString: string; // e.g., "WWLDD"
+  teamId: number;
+  teamName: string;
+  matchesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  avgGoalsFor: number;
+  avgGoalsAgainst: number;
+  bttsRate: number;
+  over25Rate: number;
+  cleanSheetRate: number;
+  formString: string;
 }
 
-export interface InsightCard {
-  fixture: Fixture;
-  tags?: string[];
-  bttsScore?: number;
-  over25Score?: number;
-  formMismatchScore?: number;
-  homeForm: TeamSummary;
-  awayForm: TeamSummary;
-}
-
-export interface RankingItem {
-  fixture: Fixture;
-  score: number;
-  teams: string; // e.g., "Team A vs Team B"
-}
-
-export interface Rankings {
-  highGoals: RankingItem[];
-  highBTTS: RankingItem[];
-  mismatch: RankingItem[];
-}
-
-export interface FixturesTableRow {
-  matchId: number;
-  utcDate: string;
-  teams: {
-    home: { id: number; name: string };
-    away: { id: number; name: string };
-  };
-  status: string;
-  score: { home: number | null; away: number | null };
-  quickTag: string | null;
-}
-
-export interface DashboardResponse {
-  date: string; // YYYY-MM-DD
-  spotlight: InsightCard[];
-  rankings: Rankings;
-  fixturesTable: FixturesTableRow[];
-}
-
-// Match Preview types
-export interface RecentMatch {
+// ===== Recent Match Row =====
+export interface RecentMatchRow {
   date: string; // ISO date string
   opponentName: string;
   homeAway: 'HOME' | 'AWAY';
@@ -93,86 +60,99 @@ export interface RecentMatch {
   result: 'W' | 'D' | 'L';
 }
 
-export interface TeamPreviewSummary {
-  wins: number;
-  draws: number;
-  losses: number;
-  points: number;
-  gf: number;
-  ga: number;
-  avgGf: number;
-  avgGa: number;
-  bttsRate: number;
-  over25Rate: number;
-  cleanSheetRate: number;
-  formString: string;
-}
-
-export interface TeamPreview {
-  teamId: number;
-  teamName: string;
-  summary: TeamPreviewSummary;
-  recentMatches: RecentMatch[];
-}
-
-export interface MatchPreviewScores {
+// ===== Insight Scores =====
+export interface InsightScores {
   bttsScore: number;
   over25Score: number;
   formMismatchScore: number;
 }
 
-export interface MatchPreviewMatch {
-  matchId: number;
-  utcDate: string;
-  status: string;
-  competition: {
-    id: string;
-    name: string;
-    areaName?: string;
+// ===== Insight Card =====
+export interface InsightCard {
+  fixture: Fixture;
+  homeSummary: TeamSummary;
+  awaySummary: TeamSummary;
+  scores: InsightScores;
+  tags: string[];
+}
+
+// ===== Rankings =====
+export interface RankingItem {
+  fixture: {
+    matchId: number;
+    homeTeam: string | TeamRef;
+    awayTeam: string | TeamRef;
+    utcDate?: string;
   };
-  homeTeam: {
-    id: number;
-    name: string;
-  };
-  awayTeam: {
-    id: number;
-    name: string;
-  };
-  score?: {
-    home: number;
-    away: number;
-  };
+  score: number | { bttsScore?: number; over25Score?: number; formMismatchScore?: number };
+}
+
+export interface Rankings {
+  highGoals: RankingItem[];
+  highBTTS: RankingItem[];
+  mismatch: RankingItem[];
+}
+
+// ===== Fixtures Table Item =====
+export interface FixturesTableItem {
+  fixture: Fixture;
+  tags: string[];
+}
+
+// ===== Dashboard Response =====
+export interface DashboardResponse {
+  date: string; // YYYY-MM-DD
+  spotlight: InsightCard[];
+  rankings: Rankings;
+  fixturesTable: FixturesTableItem[];
+}
+
+// ===== Upcoming Page Types =====
+export type UpcomingRange = 'today' | 'tomorrow' | 'weekend' | 'next7';
+
+export interface UpcomingResponse {
+  dateFrom: string;
+  dateTo: string;
+  range: UpcomingRange;
+  fixtures: FixturesTableItem[];
+  spotlight: InsightCard[];
+}
+
+// ===== Match Preview Types =====
+export interface TeamPreviewData {
+  team: TeamRef;
+  summary: TeamSummary;
+  recentMatches: RecentMatchRow[];
 }
 
 export interface MatchPreviewResponse {
-  match: MatchPreviewMatch;
+  match: Fixture;
   tags: string[];
-  scores: MatchPreviewScores;
+  scores: InsightScores;
   whyBullets: string[];
-  home: TeamPreview;
-  away: TeamPreview;
+  home: TeamPreviewData;
+  away: TeamPreviewData;
 }
 
-// Legacy types (keeping for backward compatibility with other pages)
-export interface TeamStats {
-  matches_played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goals_for: number;
-  goals_against: number;
+// ===== Team Insights Response =====
+export interface TeamInsightsResponse {
+  team: TeamRef;
+  summary: TeamSummary;
+  recentMatches: RecentMatchRow[];
 }
 
-export interface TeamInsights {
-  team: Team;
-  stats: TeamStats;
-  recent_form: string[]; // e.g., ["W", "W", "L", "D", "W"]
-  upcoming_fixtures: number[]; // fixture IDs
+// ===== Health Check =====
+export interface HealthResponse {
+  ok: boolean;
+  timestamp: string;
+  database: string;
+  databaseOk: boolean;
 }
 
+// ===== Legacy types (kept for backward compatibility) =====
 export interface DashboardInsights {
-  featured_matches: number[]; // fixture IDs
-  trending_teams: number[]; // team IDs
+  featured_matches: number[];
+  trending_teams: number[];
   upcoming_highlights: Array<{
     type: string;
     id: number;

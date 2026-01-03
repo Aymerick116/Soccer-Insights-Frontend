@@ -1,11 +1,11 @@
 /** API client for backend endpoints */
 import type {
   DashboardInsights,
-  Fixture,
-  TeamInsights,
-  Competition,
+  TeamInsightsResponse,
   DashboardResponse,
   MatchPreviewResponse,
+  UpcomingResponse,
+  UpcomingRange,
 } from '../types/api';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -13,7 +13,7 @@ const API_BASE_URL = 'http://localhost:8000';
 async function fetchAPI<T>(endpoint: string): Promise<T> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`);
-    
+
     if (!response.ok) {
       // Try to get error message from response body
       let errorMessage = `API error: ${response.status} ${response.statusText}`;
@@ -29,7 +29,7 @@ async function fetchAPI<T>(endpoint: string): Promise<T> {
       }
       throw new Error(errorMessage);
     }
-    
+
     return response.json();
   } catch (error) {
     // Handle CORS and network errors
@@ -43,8 +43,8 @@ async function fetchAPI<T>(endpoint: string): Promise<T> {
 
 export const api = {
   /** Get dashboard data for a specific date */
-  getDashboard: (date: string): Promise<DashboardResponse> => {
-    return fetchAPI<DashboardResponse>(`/api/dashboard?date=${date}`);
+  getDashboard: (date: string, last: number = 5): Promise<DashboardResponse> => {
+    return fetchAPI<DashboardResponse>(`/api/dashboard?date=${date}&last=${last}`);
   },
 
   /** Get dashboard insights (legacy) */
@@ -58,13 +58,13 @@ export const api = {
   },
 
   /** Get team insights by ID */
-  getTeamInsights: (teamId: number): Promise<TeamInsights> => {
-    return fetchAPI<TeamInsights>(`/api/teams/${teamId}/insights`);
+  getTeamInsights: (teamId: number, last: number = 10): Promise<TeamInsightsResponse> => {
+    return fetchAPI<TeamInsightsResponse>(`/api/teams/${teamId}/insights?last=${last}`);
   },
 
-  /** Get all competitions */
-  getCompetitions: (): Promise<Competition[]> => {
-    return fetchAPI<Competition[]>('/api/competitions');
+  /** Get upcoming matches */
+  getUpcoming: (range: UpcomingRange, last: number = 5): Promise<UpcomingResponse> => {
+    return fetchAPI<UpcomingResponse>(`/api/upcoming?range=${range}&last=${last}`);
   },
 };
 

@@ -18,6 +18,12 @@ export default function Layout() {
               >
                 Dashboard
               </Link>
+              <Link
+                to="/upcoming"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Upcoming
+              </Link>
             </div>
           </div>
         </div>

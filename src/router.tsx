@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import MatchPreview from './pages/MatchPreview';
 import TeamPage from './pages/TeamPage';
+import Upcoming from './pages/Upcoming';
 
 export const router = createBrowserRouter([
   {
@@ -12,6 +13,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <Dashboard />,
+      },
+      {
+        path: 'upcoming',
+        element: <Upcoming />,
       },
       {
         path: 'match/:matchId',

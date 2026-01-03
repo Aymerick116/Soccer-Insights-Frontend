@@ -9,12 +9,12 @@ interface SpotlightCardProps {
 }
 
 export default function SpotlightCard({ insight }: SpotlightCardProps) {
-  const { fixture, tags, bttsScore, over25Score, formMismatchScore, homeForm, awayForm } = insight;
-  
+  const { fixture, tags, scores, homeSummary, awaySummary } = insight;
+
   if (!fixture || !fixture.utcDate) {
     return null;
   }
-  
+
   const localTime = formatLocalTime(fixture.utcDate);
   const scoreDisplay = fixture.status === 'FINISHED' && fixture.score
     ? `${fixture.score.home}–${fixture.score.away}`
@@ -27,7 +27,7 @@ export default function SpotlightCard({ insight }: SpotlightCardProps) {
           <span className="text-xs text-gray-500">{fixture.competition?.name || 'Unknown Competition'}</span>
           <span className="text-xs text-gray-500">{localTime}</span>
         </div>
-        
+
         <div className="text-center mb-3">
           <div className="flex items-center justify-center gap-3">
             <div className="flex items-center gap-2">
@@ -62,40 +62,40 @@ export default function SpotlightCard({ insight }: SpotlightCardProps) {
         )}
 
         <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
-          {bttsScore !== undefined && (
+          {scores?.bttsScore !== undefined && (
             <div className="text-center">
               <div className="text-gray-600">BTTS</div>
-              <div className="font-semibold">{bttsScore.toFixed(2)}</div>
+              <div className="font-semibold">{scores.bttsScore.toFixed(2)}</div>
             </div>
           )}
-          {over25Score !== undefined && (
+          {scores?.over25Score !== undefined && (
             <div className="text-center">
               <div className="text-gray-600">Over 2.5</div>
-              <div className="font-semibold">{over25Score.toFixed(2)}</div>
+              <div className="font-semibold">{scores.over25Score.toFixed(2)}</div>
             </div>
           )}
-          {formMismatchScore !== undefined && (
+          {scores?.formMismatchScore !== undefined && (
             <div className="text-center">
               <div className="text-gray-600">Mismatch</div>
-              <div className="font-semibold">{formMismatchScore.toFixed(2)}</div>
+              <div className="font-semibold">{scores.formMismatchScore.toFixed(2)}</div>
             </div>
           )}
         </div>
 
-        {(homeForm || awayForm) && (
+        {(homeSummary || awaySummary) && (
           <div className="flex items-center justify-between text-xs mb-3">
             <div className="flex-1">
               <div className="text-gray-600 mb-1">{fixture.homeTeam.name}</div>
-              {homeForm?.formString ? (
-                <FormStrip form={homeForm.formString.split('')} />
+              {homeSummary?.formString ? (
+                <FormStrip form={homeSummary.formString.split('')} />
               ) : (
                 <div className="text-xs text-gray-400">No form data</div>
               )}
             </div>
             <div className="flex-1 ml-4">
               <div className="text-gray-600 mb-1">{fixture.awayTeam.name}</div>
-              {awayForm?.formString ? (
-                <FormStrip form={awayForm.formString.split('')} />
+              {awaySummary?.formString ? (
+                <FormStrip form={awaySummary.formString.split('')} />
               ) : (
                 <div className="text-xs text-gray-400">No form data</div>
               )}
